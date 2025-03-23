@@ -17,7 +17,13 @@ from mydeen.interface import (
     ListMetaSurahs,
 )
 from mydeen.yt_services import Channels
-
+from mydeen.memory_quran import (
+    MemoryQuran,
+    MemoryParts,
+    MemoryQuranData,
+    PartsMemoryQuranData,
+    PartsNameEnum,
+)
 
 __all__ = [
     "MyDeen",
@@ -33,4 +39,9 @@ __all__ = [
     "TypedMetaSurah",
     "ListMetaSurahs",
     "Channels",
+    "MemoryQuran",
+    "MemoryParts",
+    "MemoryQuranData",
+    "PartsMemoryQuranData",
+    "PartsNameEnum",
 ]

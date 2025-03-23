@@ -6,13 +6,15 @@
 
 ## ✨ Fonctionnalités
 
-- 📚 Accès aux données du Coran (sourates, versets, métadonnées…)
-- 📺 Intégration avec l’API YouTube pour récupérer :
-  - les identifiants de chaînes à partir de leur handle
-  - les playlists d’une chaîne
-  - les vidéos d’une playlist
-- 🔎 Filtrage et recherche de sourates ou versets spécifiques
-- 🧠 Typages stricts et code Python bien structuré
+- 📚 Accès aux **données du Coran** (sourates, versets, métadonnées…)
+- 🧠 Gestion des **parties traditionnelles du Coran** pour la mémorisation (`Hifz`)
+- 🔍 Recherche et filtrage par critères (ex: nombre de versets, type de révélation…)
+- 📺 Intégration avec **YouTube API** :
+  - Récupération des identifiants de chaînes à partir de leurs handles
+  - Extraction des playlists d’une chaîne
+  - Liste des vidéos d’une playlist
+- 🧩 Typages stricts (`TypedDict`, `NamedTuple`, `Enum`) pour plus de fiabilité
+- ✅ Zéro dépendance inutile — code léger et structuré
 
 ---
 
@@ -22,24 +24,61 @@
 pip install mydeen
 ```
 
-> ⚠️ Python 3.9 ou supérieur est requis
+> ⚠️ Python **3.9 ou supérieur** requis
 
 ---
 
 ## 🧪 Exemple d'utilisation
 
+### ✅ Initialisation
+
 ```python
-from mydeen import MyDeen, Config
+from mydeen import MyDeen
 
-mydeen = MyDeen(path_database="./database")
+mydeen = MyDeen()
+```
 
-# Récupérer toutes les sourates
-sourates = mydeen.meta_surah.get_all()
+---
 
-# Obtenir les playlists d’une chaîne YouTube
-from mydeen.yt_services import YoutubeServices
+### 📚 1. Accéder aux métadonnées des sourates
+
+```python
+surahs = mydeen.meta_surahs().get_all()
+```
+
+### 🔍 2. Filtrer des sourates par type de révélation
+
+```python
+medinoises = mydeen.meta_surahs().get_by("revelation_type", ["Medinoise"])
+```
+
+---
+
+### 🧠 3. Parties du Coran pour la mémorisation (Hifz)
+
+```python
+from mydeen import MemoryQuran, PartsNameEnum
+
+memory = MemoryQuran()
+
+# Accéder aux sourates de la partie 'al_mufassal'
+part = memory.get_parts(PartsNameEnum.al_mufassal)
+
+# Récupérer les noms des sourates
+noms = memory.get_surah_names(PartsNameEnum.al_mufassal)
+```
+
+---
+
+### 📺 4. YouTube : chaînes, playlists et vidéos
+
+```python
+from mydeen import YoutubeServices, Config
+
 yt = YoutubeServices(api_key="VOTRE_CLE_API")
-playlists = yt.get_playlist(yt.channels.lecoransimplement)
+channel_id = yt.channels.lecoransimplement
+playlists = yt.get_playlist(channel_id)
+videos = yt.get_videos_playlist(playlists[0]['id'])
 ```
 
 ---
@@ -51,8 +90,10 @@ mydeen/
 ├── config.py
 ├── exception_error.py
 ├── interface.py
+├── memory_quran.py
+├── metasurahs.py
+├── meta_quran_reader.py
 ├── mydeen.py
-├── parser_meta_surahs.py
 ├── yt_services.py
 └── ...
 ```
