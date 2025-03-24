@@ -1,9 +1,10 @@
-from .metasurahs import MetaSurahs
+from .metasurahs import MetaSurahs, LanguageOptions
 from .meta_quran_reader import MetaQuranReader
 from .yt_services import YoutubeServices
 from .memory_quran import MemoryQuran
 from .config import Config
 from pathlib import Path
+from typing import Union
 
 
 class MyDeen:
@@ -12,7 +13,7 @@ class MyDeen:
     Fournit l'accès aux différents services liés au Coran, YouTube et mémorisation.
     """
 
-    def __init__(self, language: str = None) -> None:
+    def __init__(self, language: Union[None, LanguageOptions] = None) -> None:
         path = Path(__file__).parent / "data"
         path.mkdir(parents=True, exist_ok=True)
         self.path_database = path.as_posix()
@@ -23,23 +24,21 @@ class MyDeen:
         self.setup_all()
 
     @property
-    def language(self) -> str:
+    def language(self) -> Union[None, LanguageOptions]:
         return self.__language
 
     def config_url(self) -> Config:
         """Retourne la configuration des URLs de ressources utilisées."""
         return Config()
 
-    def meta_surahs(self, language: str = None) -> MetaSurahs:
+    def meta_surahs(self, language: Union[None, LanguageOptions] = None) -> MetaSurahs:
         """Retourne les métadonnées des sourates du Coran."""
-        if language is None and self.__language is None:
-            return MetaSurahs(self.path_database)
-        elif language and self.__language is None:
-            return MetaSurahs(self.path_database, language)
-        elif language is None and self.__language:
-            return MetaSurahs(self.path_database, self.__language)
-        else:
-            return MetaSurahs(self.path_database)
+        lang = language or self.__language
+        return (
+            MetaSurahs(self.path_database, lang)
+            if lang
+            else MetaSurahs(self.path_database)
+        )
 
     def memory_quran(self) -> MemoryQuran:
         """Retourne l'outil de gestion des parties du Coran à mémoriser."""

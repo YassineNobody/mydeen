@@ -6,11 +6,11 @@ from .exception_error import ByError, FormatValueGet, SurahNotFound, VersetNotFo
 from .interface import ListMetaSurahs
 from typing import Literal, Tuple, Union, Optional, List, Any
 import re
-from langcodes import find as findcodeslg
 
+LanguageOptions = Literal['fr', 'en'] # francais ou anglais
 
 class ParserMetaSurahs:
-    def __init__(self, path_database: str, language: str = "fr") -> None:
+    def __init__(self, path_database: str, language:LanguageOptions) -> None:
         """
         Initialise la classe ParserMetaSurahs qui gère le parsing des métadonnées des sourates.
 
@@ -21,18 +21,16 @@ class ParserMetaSurahs:
         self.__services = Services()
         self.__response_api = self._request_response_api()
         self.__quran_reader = QuranReader(path_database)
-        self.__language = self.normalize_language_code(language)
+        self.__language:LanguageOptions = self.normalize_language_code(language)
 
     @property
-    def language(self) -> str:
+    def language(self):
         return self.__language
 
-    def normalize_language_code(self, name: str) -> str:
-        try:
-            lang = findcodeslg(name).language
-            return lang if lang != "und" else "en"
-        except Exception:
-            return "en"
+    def normalize_language_code(self, name: LanguageOptions) -> LanguageOptions:
+        if name not in list(LanguageOptions.__args__):
+            return 'en' # par default en
+        return name
 
     def _request_response_api(self) -> dict:
         """
@@ -185,7 +183,7 @@ class MetaSurahs:
         self.__language = lang_code
 
     @property
-    def language(self) -> str:
+    def language(self) -> LanguageOptions:
         return self.__language
 
     @property
