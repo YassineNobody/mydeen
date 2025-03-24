@@ -9,6 +9,10 @@ class Channels(NamedTuple):
     larabesimplement: str
     lecoransimplement: str
 
+class NameChannels(NamedTuple):
+    lislamsimplement: str
+    larabesimplement: str
+    lecoransimplement: str    
 
 class Playlist(TypedDict):
     title: str
@@ -37,6 +41,15 @@ class YoutubeServices:
         self.handles = Config.handles_yt()
         self.channels = self.__connect_id_channels()
 
+    def __connect_title_channels(self) -> NameChannels:
+        """
+        Récupère les noms des chaînes Youtube à partir de leur handle.
+        """
+        channels = {}
+        for k, v in self.handles._asdict().items():
+            channels[k] = self.get_name_channel_id(v)
+        return NameChannels(**channels)
+
     def __connect_id_channels(self) -> Channels:
         """
         Récupère les identifiants des chaînes Youtube à partir de leur handle.
@@ -45,6 +58,20 @@ class YoutubeServices:
         for k, v in self.handles._asdict().items():
             channels[k] = self.get_channel_id(v)
         return Channels(**channels)
+
+    def get_name_channel_id(self, handle:str) -> str:
+        """
+        Récupère le nom des chaînes Youtube à partir de leur handle"""
+        try:
+            req = self.youtube.search().list(
+                part="snippet", type="channel", q=handle, maxResults=1
+            )
+            res = req.execute()
+            if res['items']:
+                return res['items'][0]['snippet']['title']
+            return None
+        except HttpError as e:
+            raise e
 
     def get_channel_id(self, handle: str) -> str:
         """
