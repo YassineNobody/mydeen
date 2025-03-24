@@ -1,4 +1,5 @@
-from typing import Any, NamedTuple, List, Dict, TypedDict, Optional
+from typing import Any, NamedTuple, List, Dict, Optional
+from typing_extensions import TypedDict
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from .config import Config

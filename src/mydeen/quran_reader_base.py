@@ -2,7 +2,8 @@ import json
 import pathlib as plib
 from .interface import QuranData, QuranSourateData, RevelationType
 from .services import Services
-from typing import Optional, Dict, List, Literal, Union
+from typing import Optional, Dict, List, Union
+from typing_extensions import Literal
 
 
 class QuranServices:

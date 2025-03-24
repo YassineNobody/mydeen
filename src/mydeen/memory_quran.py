@@ -1,4 +1,5 @@
-from typing import NamedTuple, TypedDict, Dict, List
+from typing import NamedTuple, Dict, List
+from typing_extensions import TypedDict
 from enum import Enum
 from .metasurahs import MetaSurahs, ListMetaSurahs
 import pandas as pd

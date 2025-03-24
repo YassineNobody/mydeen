@@ -6,7 +6,8 @@ from .interface import (
     FilterVersetsDict,
 )
 from .exception_error import SurahNotFound, VersetNotFound, FormatValueGet
-from typing import Optional, Dict, List, Tuple, Literal, Union
+from typing import Optional, Dict, List, Tuple, Union
+from typing_extensions import Literal
 import re
 
 

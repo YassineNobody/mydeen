@@ -4,7 +4,8 @@ from .services import Services
 from .quran_reader_base import QuranReaderBase as QuranReader
 from .exception_error import ByError, FormatValueGet, SurahNotFound, VersetNotFound
 from .interface import ListMetaSurahs
-from typing import Literal, Tuple, Union, Optional, List, Any
+from typing import Tuple, Union, Optional, List, Any
+from typing_extensions import Literal
 import re
 
 LanguageOptions = Literal['fr', 'en'] # francais ou anglais

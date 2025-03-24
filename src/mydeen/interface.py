@@ -1,4 +1,6 @@
-from typing import TypedDict, List, Literal
+from typing import List
+from typing_extensions import TypedDict, Literal
+
 from enum import Enum
 
 
