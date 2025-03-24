@@ -155,7 +155,7 @@ class ParserMetaSurahs:
         return merged_df
 
     def define_url_quran_com(self, surah: Any = None) -> str:
-        base_url = "https://quran.com/"
+        base_url = "https://quran.com"
         if self.__language == "en":
             return f"{base_url}/{surah}" if surah else base_url
         return (
