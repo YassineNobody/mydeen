@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mydeen"
-version = "0.3.0"
+version = "0.4.0"
 description = "Un package Python qui, par la permission d'Allah, soit un bien pour la communauté musulmane francophone."
 authors = ["YassinePaquitoNobody <monsieurnobody01@gmail.com>"]
 license = "MIT"
@@ -20,6 +20,7 @@ python = ">=3.9"
 pandas = ">=2.2.3,<3.0.0"
 requests = ">=2.32.3,<3.0.0"
 google-api-python-client = ">=2.165.0,<3.0.0"
+langcodes = "^3.5.0"
 
 [tool.poetry.scripts]
 # si tu veux un CLI plus tard (tu peux le commenter pour l’instant)

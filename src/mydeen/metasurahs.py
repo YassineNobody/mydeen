@@ -6,10 +6,11 @@ from .exception_error import ByError, FormatValueGet, SurahNotFound, VersetNotFo
 from .interface import ListMetaSurahs
 from typing import Literal, Tuple, Union, Optional, List, Any
 import re
+from langcodes import find as findcodeslg
 
 
 class ParserMetaSurahs:
-    def __init__(self, path_database: str) -> None:
+    def __init__(self, path_database: str, language: str = "fr") -> None:
         """
         Initialise la classe ParserMetaSurahs qui gère le parsing des métadonnées des sourates.
 
@@ -20,6 +21,18 @@ class ParserMetaSurahs:
         self.__services = Services()
         self.__response_api = self._request_response_api()
         self.__quran_reader = QuranReader(path_database)
+        self.__language = self.normalize_language_code(language)
+
+    @property
+    def language(self) -> str:
+        return self.__language
+
+    def normalize_language_code(self, name: str) -> str:
+        try:
+            lang = findcodeslg(name).language
+            return lang if lang != "und" else "en"
+        except Exception:
+            return "en"
 
     def _request_response_api(self) -> dict:
         """
@@ -131,17 +144,29 @@ class ParserMetaSurahs:
             inplace=True,
         )
         merged_df["url_quran"] = merged_df["position"].apply(
-            lambda x: f"https://quran.com/{x}"
+            lambda x: self.define_url_quran_com(x)
         )
         merged_df.drop_duplicates(inplace=True)
         if save_in:
-            path = plib.Path(self.path_database).joinpath("metasurahs.csv")
+            path = plib.Path(self.path_database).joinpath(
+                f"metasurahs_{self.language}.csv"
+            )
             merged_df.to_csv(index=False, path_or_buf=path.as_posix())
         return merged_df
 
+    def define_url_quran_com(self, surah: Any = None) -> str:
+        base_url = "https://quran.com/"
+        if self.__language == "en":
+            return f"{base_url}/{surah}" if surah else base_url
+        return (
+            f"{base_url}/{self.__language}/{surah}"
+            if surah
+            else f"{base_url}/{self.__language}"
+        )
+
 
 class MetaSurahs:
-    def __init__(self, path_database: str) -> None:
+    def __init__(self, path_database: str, language: str = "fr") -> None:
         """
         Initialise la classe MetaSurahs en chargeant les données des sourates depuis un fichier CSV
         ou en les générant via le ParserMetaSurahs si le fichier n'existe pas.
@@ -149,13 +174,19 @@ class MetaSurahs:
         Args:
             path_database (str): Le chemin vers la base de données.
         """
-        path = plib.Path(path_database).joinpath("metasurahs.csv")
+        parser = ParserMetaSurahs(path_database, language)
+        lang_code = parser.language
+        path = plib.Path(path_database).joinpath(f"metasurahs_{lang_code}.csv")
         if path.exists():
             df = pd.read_csv(path.as_posix())
         else:
-            parser = ParserMetaSurahs(path_database)
             df = parser.parser_meta_surahs()
         self.__df = df
+        self.__language = lang_code
+
+    @property
+    def language(self) -> str:
+        return self.__language
 
     @property
     def df(self) -> pd.DataFrame:

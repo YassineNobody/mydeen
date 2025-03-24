@@ -9,10 +9,12 @@ class Channels(NamedTuple):
     larabesimplement: str
     lecoransimplement: str
 
+
 class NameChannels(NamedTuple):
     lislamsimplement: str
     larabesimplement: str
-    lecoransimplement: str    
+    lecoransimplement: str
+
 
 class Playlist(TypedDict):
     title: str
@@ -40,58 +42,42 @@ class YoutubeServices:
         )
         self.handles = Config.handles_yt()
         self.channels = self.__connect_id_channels()
+        self.channel_names = self.__connect_title_channels()
+
+    def __repr__(self) -> str:
+        return f"<YoutubeServices connected with key=****{self.api_key[-4:]}>"
+
+    def __get_channel_data(self, handle: str) -> Dict[str, Any] | None:
+        try:
+            req = self.youtube.search().list(
+                part="snippet", type="channel", q=handle, maxResults=1
+            )
+            res = req.execute()
+            return res["items"][0] if res["items"] else None
+        except HttpError as e:
+            raise e
+
+    def get_channel_id(self, handle: str) -> str | None:
+        data = self.__get_channel_data(handle)
+        return data["snippet"].get("channelId") if data else None
+
+    def get_name_channel_id(self, handle: str) -> str | None:
+        data = self.__get_channel_data(handle)
+        return data["snippet"].get("title") if data else None
 
     def __connect_title_channels(self) -> NameChannels:
-        """
-        Récupère les noms des chaînes Youtube à partir de leur handle.
-        """
-        channels = {}
-        for k, v in self.handles._asdict().items():
-            channels[k] = self.get_name_channel_id(v)
+        channels = {
+            k: self.get_name_channel_id(v) for k, v in self.handles._asdict().items()
+        }
         return NameChannels(**channels)
 
     def __connect_id_channels(self) -> Channels:
-        """
-        Récupère les identifiants des chaînes Youtube à partir de leur handle.
-        """
-        channels = {}
-        for k, v in self.handles._asdict().items():
-            channels[k] = self.get_channel_id(v)
+        channels = {
+            k: self.get_channel_id(v) for k, v in self.handles._asdict().items()
+        }
         return Channels(**channels)
 
-    def get_name_channel_id(self, handle:str) -> str:
-        """
-        Récupère le nom des chaînes Youtube à partir de leur handle"""
-        try:
-            req = self.youtube.search().list(
-                part="snippet", type="channel", q=handle, maxResults=1
-            )
-            res = req.execute()
-            if res['items']:
-                return res['items'][0]['snippet']['title']
-            return None
-        except HttpError as e:
-            raise e
-
-    def get_channel_id(self, handle: str) -> str:
-        """
-        Récupère l'identifiant d'une chaîne Youtube à partir de son handle (ex: @lecoransimplement).
-        """
-        try:
-            req = self.youtube.search().list(
-                part="snippet", type="channel", q=handle, maxResults=1
-            )
-            res = req.execute()
-            if res["items"]:
-                return res["items"][0]["snippet"]["channelId"]
-            return None
-        except HttpError as e:
-            raise e
-
     def get_playlist(self, channel_id: str) -> List[Playlist]:
-        """
-        Récupère la liste des playlists d'une chaîne Youtube.
-        """
         playlists = []
         next_page_token = None
         while True:
@@ -102,36 +88,32 @@ class YoutubeServices:
                 pageToken=next_page_token,
             )
             res = req.execute()
-            playlists.extend(res["items"])
+            playlists.extend(res.get("items", []))
             next_page_token = res.get("nextPageToken")
             if not next_page_token:
                 break
         return self.__parser_playlist(playlists)
 
     def __parser_playlist(self, playlists: List[Dict[str, Any]]) -> List[Playlist]:
-        """
-        Parse les playlists pour récupérer les informations nécessaires.
-        """
         data = []
         for playlist in playlists:
+            snippet = playlist.get("snippet", {})
+            content = playlist.get("contentDetails", {})
             data.append(
                 {
-                    "title": playlist["snippet"]["title"],
-                    "id": playlist["id"],
-                    "video_count": playlist["contentDetails"]["itemCount"],
-                    "thumbnail": playlist["snippet"]["thumbnails"]
+                    "title": snippet.get("title", ""),
+                    "id": playlist.get("id", ""),
+                    "video_count": content.get("itemCount", 0),
+                    "thumbnail": snippet.get("thumbnails", {})
                     .get("medium", {})
-                    .get("url"),
-                    "url_playlist": f"https://www.youtube.com/playlist?list={playlist['id']}",
-                    "description": playlist["snippet"].get("description", ""),
+                    .get("url", ""),
+                    "url_playlist": f"https://www.youtube.com/playlist?list={playlist.get('id', '')}",
+                    "description": snippet.get("description", ""),
                 }
             )
         return data
 
     def get_videos_playlist(self, playlist_id: str) -> List[Video]:
-        """
-        Récupère les vidéos d'une playlist.
-        """
         videos = []
         next_page_token = None
         while True:
@@ -142,7 +124,7 @@ class YoutubeServices:
                 pageToken=next_page_token,
             )
             res = req.execute()
-            videos.extend(res["items"])
+            videos.extend(res.get("items", []))
             next_page_token = res.get("nextPageToken")
             if not next_page_token:
                 break
@@ -151,21 +133,20 @@ class YoutubeServices:
     def __parser_videos(
         self, videos: List[Dict[str, Any]], playlist_id: str
     ) -> List[Video]:
-        """
-        Parse les vidéos pour récupérer les informations nécessaires.
-        """
         data = []
         for video in videos:
-            video_id = video["snippet"]["resourceId"]["videoId"]
+            snippet = video.get("snippet", {})
+            resource = snippet.get("resourceId", {})
+            video_id = resource.get("videoId", "")
             data.append(
                 {
-                    "title": video["snippet"]["title"],
+                    "title": snippet.get("title", ""),
                     "video_id": video_id,
-                    "position": video["snippet"]["position"],
-                    "published_at": video["snippet"]["publishedAt"],
-                    "thumbnail": video["snippet"]["thumbnails"]
+                    "position": snippet.get("position", 0),
+                    "published_at": snippet.get("publishedAt", ""),
+                    "thumbnail": snippet.get("thumbnails", {})
                     .get("medium", {})
-                    .get("url"),
+                    .get("url", ""),
                     "url": f"https://www.youtube.com/watch?v={video_id}&list={playlist_id}",
                 }
             )
