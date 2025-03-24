@@ -1,4 +1,4 @@
-from typing import Any, NamedTuple, List, Dict, TypedDict
+from typing import Any, NamedTuple, List, Dict, TypedDict, Optional
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from .config import Config
@@ -47,7 +47,7 @@ class YoutubeServices:
     def __repr__(self) -> str:
         return f"<YoutubeServices connected with key=****{self.api_key[-4:]}>"
 
-    def __get_channel_data(self, handle: str) -> Dict[str, Any] | None:
+    def __get_channel_data(self, handle: str) -> Optional[Dict[str, Any]]:
         try:
             req = self.youtube.search().list(
                 part="snippet", type="channel", q=handle, maxResults=1
@@ -57,11 +57,11 @@ class YoutubeServices:
         except HttpError as e:
             raise e
 
-    def get_channel_id(self, handle: str) -> str | None:
+    def get_channel_id(self, handle: str) -> Optional[str]:
         data = self.__get_channel_data(handle)
         return data["snippet"].get("channelId") if data else None
 
-    def get_name_channel_id(self, handle: str) -> str | None:
+    def get_name_channel_id(self, handle: str) -> Optional[str]:
         data = self.__get_channel_data(handle)
         return data["snippet"].get("title") if data else None
 
