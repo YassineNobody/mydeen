@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mydeen"
-version = "1.0.4"
+version = "1.0.6"
 description = "Un package Python qui, par la permission d'Allah, soit un bien pour la communauté musulmane francophone."
 authors = ["YassinePaquitoNobody <monsieurnobody01@gmail.com>"]
 license = "MIT"

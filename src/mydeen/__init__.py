@@ -16,7 +16,8 @@ from mydeen.interface import (
     TypedMetaSurah,
     ListMetaSurahs,
 )
-from mydeen.yt_services import Channels
+from mydeen.yt_services_processor import Channels, NameChannels, Playlist, Video
+from mydeen.yt_services import YoutubeServices
 from mydeen.memory_quran import (
     MemoryQuran,
     MemoryParts,
@@ -44,4 +45,8 @@ __all__ = [
     "MemoryQuranData",
     "PartsMemoryQuranData",
     "PartsNameEnum",
+    "YoutubeServices",
+    "NameChannels",
+    "Playlist",
+    "Video",
 ]

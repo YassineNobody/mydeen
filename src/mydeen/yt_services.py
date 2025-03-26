@@ -1,154 +1,133 @@
-from typing import Any, NamedTuple, List, Dict, Optional
+import json
+import threading
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import List, Dict
 from typing_extensions import TypedDict
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from .config import Config
+
+from mydeen.yt_services_processor import (
+    YoutubeServicesProcessorCache,
+    Channels,
+    NameChannels,
+    Playlist,
+    Video,
+)
 
 
-class Channels(NamedTuple):
-    lislamsimplement: str
-    larabesimplement: str
-    lecoransimplement: str
-
-
-class NameChannels(NamedTuple):
-    lislamsimplement: str
-    larabesimplement: str
-    lecoransimplement: str
-
-
-class Playlist(TypedDict):
-    title: str
-    id: str
-    video_count: int
-    thumbnail: str
-    url_playlist: str
-    description: str
-
-
-class Video(TypedDict):
-    title: str
-    video_id: str
-    position: int
-    published_at: str
-    thumbnail: str
-    url: str
+class CacheJSON(TypedDict):
+    channel_ids: Channels
+    channels: NameChannels
+    playlists: Dict[str, List[Playlist]]
+    videos: Dict[str, List[Video]]
+    last_update: str  # Format ISO 8601
 
 
 class YoutubeServices:
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str):
         self.api_key = api_key
-        self.youtube: Any = build(
-            "youtube", "v3", developerKey=api_key, cache_discovery=False
-        )
-        self.handles = Config.handles_yt()
-        self.channels = self.__connect_id_channels()
-        self.channel_names = self.__connect_title_channels()
+        self.__yt_processor = YoutubeServicesProcessorCache(api_key)
+        self.path_cache = Path(__file__).parent / "data" / "cache_yt.json"
+        self.path_cache.parent.mkdir(parents=True, exist_ok=True)
+        self.__cache = None
 
-    def __repr__(self) -> str:
-        return f"<YoutubeServices connected with key=****{self.api_key[-4:]}>"
+        if not self.path_cache.exists() or self._is_cache_empty():
+            print("📂 Cache inexistant ou vide, création/mise à jour...")
+            self.update_cache()
 
-    def __get_channel_data(self, handle: str) -> Optional[Dict[str, Any]]:
+    def _is_cache_empty(self) -> bool:
         try:
-            req = self.youtube.search().list(
-                part="snippet", type="channel", q=handle, maxResults=1
-            )
-            res = req.execute()
-            return res["items"][0] if res["items"] else None
-        except HttpError as e:
-            raise e
+            with open(self.path_cache, "r", encoding="utf-8") as f:
+                return not bool(json.load(f))
+        except Exception:
+            return True
 
-    def get_channel_id(self, handle: str) -> Optional[str]:
-        data = self.__get_channel_data(handle)
-        return data["snippet"].get("channelId") if data else None
+    def update_cache(self) -> None:
+        """
+        Met à jour le cache local avec les données des chaînes, playlists et vidéos.
+        """
+        print("🔄 Mise à jour du cache YouTube...")
 
-    def get_name_channel_id(self, handle: str) -> Optional[str]:
-        data = self.__get_channel_data(handle)
-        return data["snippet"].get("title") if data else None
+        channel_ids = self.__yt_processor.connect_id_channels()
+        channel_names = self.__yt_processor.connect_title_channels()
+        playlists: Dict[str, List[Playlist]] = {}
+        videos: Dict[str, List[Video]] = {}
 
-    def __connect_title_channels(self) -> NameChannels:
-        channels = {
-            k: self.get_name_channel_id(v) for k, v in self.handles._asdict().items()
+        for key, channel_id in channel_ids._asdict().items():
+            try:
+                print(f"📺 Récupération des playlists pour la chaîne : {key}")
+                channel_playlists = self.__yt_processor.get_playlist(channel_id)
+                playlists[key] = channel_playlists
+
+                for playlist in channel_playlists:
+                    playlist_id = playlist["id"]
+                    print(f"🎞️  → Récupération des vidéos de la playlist {playlist_id}")
+                    playlist_videos = self.__yt_processor.get_videos_playlist(
+                        playlist_id
+                    )
+                    videos[playlist_id] = playlist_videos
+
+            except Exception as e:
+                print(f"⚠️ Erreur lors de la récupération de {key}: {e}")
+
+        cache_data: CacheJSON = {
+            "channel_ids": channel_ids,
+            "channels": channel_names,
+            "playlists": playlists,
+            "videos": videos,
+            "last_update": datetime.utcnow().isoformat(),
         }
-        return NameChannels(**channels)
 
-    def __connect_id_channels(self) -> Channels:
-        channels = {
-            k: self.get_channel_id(v) for k, v in self.handles._asdict().items()
-        }
-        return Channels(**channels)
+        with open(self.path_cache, "w", encoding="utf-8") as f:
+            json.dump(cache_data, f, ensure_ascii=False, indent=4)
 
-    def get_playlist(self, channel_id: str) -> List[Playlist]:
-        playlists = []
-        next_page_token = None
-        while True:
-            req = self.youtube.playlists().list(
-                part="snippet, contentDetails",
-                channelId=channel_id,
-                maxResults=50,
-                pageToken=next_page_token,
-            )
-            res = req.execute()
-            playlists.extend(res.get("items", []))
-            next_page_token = res.get("nextPageToken")
-            if not next_page_token:
-                break
-        return self.__parser_playlist(playlists)
+        print("✅ Cache YouTube mis à jour avec succès !")
 
-    def __parser_playlist(self, playlists: List[Dict[str, Any]]) -> List[Playlist]:
-        data = []
-        for playlist in playlists:
-            snippet = playlist.get("snippet", {})
-            content = playlist.get("contentDetails", {})
-            data.append(
-                {
-                    "title": snippet.get("title", ""),
-                    "id": playlist.get("id", ""),
-                    "video_count": content.get("itemCount", 0),
-                    "thumbnail": snippet.get("thumbnails", {})
-                    .get("medium", {})
-                    .get("url", ""),
-                    "url_playlist": f"https://www.youtube.com/playlist?list={playlist.get('id', '')}",
-                    "description": snippet.get("description", ""),
-                }
-            )
-        return data
+    def __read_cache(self) -> CacheJSON:
+        with open(self.path_cache, "r") as f:
+            return json.load(f)
 
-    def get_videos_playlist(self, playlist_id: str) -> List[Video]:
-        videos = []
-        next_page_token = None
-        while True:
-            req = self.youtube.playlistItems().list(
-                part="snippet",
-                playlistId=playlist_id,
-                maxResults=50,
-                pageToken=next_page_token,
-            )
-            res = req.execute()
-            videos.extend(res.get("items", []))
-            next_page_token = res.get("nextPageToken")
-            if not next_page_token:
-                break
-        return self.__parser_videos(videos, playlist_id)
+    @property
+    def cache(self) -> CacheJSON:
+        if self.__cache is None:
+            self.__cache = self.__read_cache()
+        return self.__cache
 
-    def __parser_videos(
-        self, videos: List[Dict[str, Any]], playlist_id: str
-    ) -> List[Video]:
-        data = []
-        for video in videos:
-            snippet = video.get("snippet", {})
-            resource = snippet.get("resourceId", {})
-            video_id = resource.get("videoId", "")
-            data.append(
-                {
-                    "title": snippet.get("title", ""),
-                    "video_id": video_id,
-                    "position": snippet.get("position", 0),
-                    "published_at": snippet.get("publishedAt", ""),
-                    "thumbnail": snippet.get("thumbnails", {})
-                    .get("medium", {})
-                    .get("url", ""),
-                    "url": f"https://www.youtube.com/watch?v={video_id}&list={playlist_id}",
-                }
-            )
-        return data
+    def get_channels(self) -> NameChannels:
+        return self.cache["channels"]
+
+    def get_channel_ids(self) -> Channels:
+        return self.cache["channel_ids"]
+
+    def get_playlists(self, channel_key: str) -> List[Playlist]:
+        return self.cache["playlists"].get(channel_key, [])
+
+    def get_videos_from_playlist(self, playlist_id: str) -> List[Video]:
+        return self.cache["videos"].get(playlist_id, [])
+
+    @property
+    def last_update(self) -> datetime:
+        try:
+            return datetime.fromisoformat(self.cache["last_update"])
+        except Exception:
+            return datetime.min
+
+    def is_cache_expired(self, hours: int = 24) -> bool:
+        try:
+            return datetime.utcnow() - self.last_update > timedelta(hours=hours)
+        except Exception:
+            return True
+
+    def refresh_cache(
+        self, force: bool = False, async_mode: bool = True, hours: int = 24
+    ) -> None:
+        if force or self._is_cache_empty() or self.is_cache_expired(hours):
+            print("♻️ Rafraîchissement du cache YouTube...")
+            if async_mode:
+                threading.Thread(target=self.update_cache, daemon=True).start()
+            else:
+                self.update_cache()
+
+    def __repr__(self):
+        return (
+            f"<YoutubeServices last_update={self.cache.get('last_update', 'unknown')}>"
+        )
